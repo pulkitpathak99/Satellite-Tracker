@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map Location</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    #map {
+        height: 100vh;
+        width: 100%;
+    }
+    header {
+        background-color: #001f3f;
+        color: white;
+        padding: 10px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .logo {
+        font-size: 1.5em;
+        font-weight: bold;
+    }
+    .link-container {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .link-button {
+        display: inline-block;
+        padding: 4px 7px;
+        margin: 5px;
+        text-align: center;
+        text-decoration: none;
+        color: white;
+        border-radius: 5px;
+        transition: background-color 0.3s, transform 0.1s;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .link-button:hover {
+        background-color: #033973;
+        transform: translateY(-2px);
+    }
+    #back-btn {
+            position: absolute;
+            top: 100px;
+            left: 10px;
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-align: center;
+    }
+</style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="logo.png" alt="Logo" style="height: 50px; margin-right: 10px;">
+        </div>
+        <div class="link-container">
+            <a class="link-button" href="home.html">Home</a>
+            <a class="link-button" href="currentLocation.html">Real-Time Locations</a>
+            <a class="link-button" href="HistoricalData.html">Historical Data</a>
+            <a class="link-button" href="mappedHistory.html">Mapped History</a>
+            <a class="link-button" href="geofencing.html">Geofencing (Testing)</a>
+            <a class="link-button" href="geofencingPage(restricted).html">Geofencing (Restricted Access)</a>
+            <a class="link-button" href="CustomRegions.html">Define Custom Region</a>
+        </div>
+    </header>
+    <div id="back-btn">
+        <a href="/home.html">Return to Previous Page</a>
+    </div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+// Function to get query parameters from URL
+function getQueryParams() {
+    let params = {};
+    let queryString = window.location.search.substring(1);
+    let queries = queryString.split("&");
+    queries.forEach(function(query) {
+        let pair = query.split("=");
+        params[pair[0]] = decodeURIComponent(pair[1]);
+    });
+    return params;
+}
+
+// Get latitude and longitude from URL parameters
+let params = getQueryParams();
+let latitude = parseFloat(params.lat);
+let longitude = parseFloat(params.lng);
+
+// Initialize the map
+let map = L.map('map').setView([latitude, longitude], 15);
+
+// Add the tile layer from MapTiler
+L.tileLayer('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=mbDwiByVth6NBS6Gcy1g', {
+    attribution: '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>',
+}).addTo(map);
+
+// Add a marker at the specified location
+let marker = L.marker([latitude, longitude]).addTo(map);
+marker.bindPopup(`Latitude: ${latitude}, Longitude: ${longitude}`).openPopup();
+</script>
+</body>
+</html>

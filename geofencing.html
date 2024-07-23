@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>geofencing(test)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="css/geofencingPage(restricted).css">
+    <style>
+        .export-button {
+          justify-content: right;
+            margin-right: 0%;
+        }
+
+        </style>
+</head>
+<body>
+    <div class="wave"></div>
+    <header>
+        <div class="logo">
+        <img src="images/logo.png" alt="Logo">
+        </div>
+        <nav class="link-container">
+                <a href="home.html" class="link-button">Home</a>
+                 <a href="currentLocation.html" class="link-button">Real-Time Locations</a>
+                <a href="HistoricalData.html" class="link-button">Historical Data</a>
+                <a href="mappedHistory.html" class="link-button">Mapped History</a>
+                <div class="dropdown1">
+                    <button class="dropbtn1">Geofencing</button>
+                        <div class="dropdown-content1">
+                              <a href="geofencing.html">Testing</a>
+                              <a href="geofencingPage(restricted).html">Restricted Access</a>
+                        </div>
+                </div>
+                <a href="CustomRegions.html" class="link-button">Define Custom Region</a>
+        </nav>
+    </header>
+    <div class="wave"></div>
+    <div class="content">
+        <h1>Geofencing(Testing)</h1>
+        <div id="filter-container" class="button-container">
+            <div class="dropdown">
+                <button>State</button>
+                <div id="state-select" class="dropdown-content">
+                    <!-- Checkboxes will be added here dynamically -->
+                </div>
+            </div>
+            <div class="dropdown">
+                <button>District</button>
+                <div id="district-select" class="dropdown-content">
+                    <!-- Checkboxes will be added here dynamically -->
+                </div>
+            </div>
+            <div class="dropdown">
+                <button>Custom Region</button>
+                <div id="region-select" class="dropdown-content">
+                    <!-- Checkboxes will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+        <div id="map"></div>
+        <button id="export-csv" class="export-button">Export to CSV</button>
+        <div id="logs-section">
+            <h2>Devices Currently Inside Geofenced Area</h2>
+            <table id="filteredLocationsTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0, 'filteredLocationsTable')">Device ID</th>
+                        <th onclick="sortTable(1, 'filteredLocationsTable')">Time</th>
+                        <th onclick="sortTable(2, 'filteredLocationsTable')">Latitude</th>
+                        <th onclick="sortTable(3, 'filteredLocationsTable')">Longitude</th>
+                        <th onclick="sortTable(4, 'filteredLocationsTable')">District</th>
+                        <th onclick="sortTable(5, 'filteredLocationsTable')">State</th>
+                        <th onclick="sortTable(6, 'filteredLocationsTable')">Status</th>
+
+                    </tr>
+                </thead>
+                <tbody id="filteredLocationsBody">
+                    <!-- Filtered locations will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const map = L.map('map', {
+                center: [20.5937, 78.9629],
+                zoom: 4,
+                zoomControl: true,
+                scrollWheelZoom: false
+            });
+
+            L.tileLayer('https://api.maptiler.com/maps/topo-v2/{z}/{x}/{y}.png?key=mbDwiByVth6NBS6Gcy1g', {
+                attribution: '&copy; MapTiler &copy; OpenStreetMap contributors'
+            }).addTo(map);
+            localStorage.setItem('filteredData', JSON.stringify([])); // Initialize filtered data
+            localStorage.setItem('deviceLogs', JSON.stringify([])); // Initialize device logs
+            localStorage.setItem('filteredDeviceIds', JSON.stringify([])); // Initialize filtered device IDs
+            let deviceMarkers = {};
+            let allData = [];
+            let statesData = [];
+            let highlightedRegions = []; // To store the highlighted regions
+
+            function fetchStatesAndDistricts() {
+                fetch('/api/states_and_districts')
+                    .then(response => response.json())
+                    .then(data => {
+                        statesData = data;
+                        populateStateFilter(data);
+                    })
+                    .catch(error => console.error('Error fetching states and districts:', error));
+            }
+
+            function populateStateFilter(data) {
+                const stateSelect = document.getElementById('state-select');
+                stateSelect.innerHTML = '';
+
+                // Add a default option for "(None)"
+                const noneOption = document.createElement('label');
+                noneOption.innerHTML = `<input type="checkbox" value="" class="state-checkbox"> (None)`;
+                stateSelect.appendChild(noneOption);
+
+                // Add checkboxes for each state
+                data.forEach(state => {
+                    const stateCheckbox = document.createElement('label');
+                    stateCheckbox.innerHTML = `<input type="checkbox" value="${state.state_name}" class="state-checkbox"> ${state.state_name}`;
+                    stateSelect.appendChild(stateCheckbox);
+                });
+            }
+
+            function populateDistrictFilter() {
+                const selectedStates = Array.from(document.querySelectorAll('.state-checkbox:checked')).map(cb => cb.value);
+                const districtSelect = document.getElementById('district-select');
+                districtSelect.innerHTML = '';
+
+                if (selectedStates.length > 0) {
+                    const x = allData.filter(location => selectedStates.includes(location.state));
+                    const uniqueDistricts = [...new Set(x.map(location => location.district))];
+
+                    uniqueDistricts.forEach(district => {
+                        const districtCheckbox = document.createElement('label');
+                        districtCheckbox.innerHTML = `<input type="checkbox" value="${district}" class="district-checkbox"> ${district}`;
+                        districtSelect.appendChild(districtCheckbox);
+                    });
+                }
+                if(selectedStates.length === 0){
+                    const uniqueDistricts = [...new Set(allData.map(location => location.district))];
+                    uniqueDistricts.forEach(district => {
+                        const districtCheckbox = document.createElement('label');
+                        districtCheckbox.innerHTML = `<input type="checkbox" value="${district}" class="district-checkbox"> ${district}`;
+                        districtSelect.appendChild(districtCheckbox);
+                    });
+                }
+            }
+
+            function fetchAllDevices() {
+                fetch('/api/latest_locations')
+                    .then(response => response.json())
+                    .then(data => {
+                        allData = data;
+                        applyFilters();
+                    })
+                    .catch(error => console.error('Error fetching device locations:', error));
+            }
+
+            function loadCustomRegions() {
+                const regions = JSON.parse(localStorage.getItem('customRegions')) || [];
+                const regionSelect = document.getElementById('region-select');
+                regionSelect.innerHTML = '';
+
+                regions.forEach((region, index) => {
+                    const regionCheckbox = document.createElement('div');
+                    regionCheckbox.classList.add('custom-region-item');
+                    regionCheckbox.innerHTML = `
+                        <input type="checkbox" id="region-checkbox-${index}" value='${JSON.stringify(region)}' class="region-checkbox">
+                        <label for="region-checkbox-${index}">${region.name}</label>
+                        <button class="delete-region-btn" onclick="deleteCustomRegion(${index})">&#10006;</button>
+                    `;
+                    regionSelect.appendChild(regionCheckbox);
+                });
+            }
+
+            function applyFilters() {
+                // Exit if filters are locked
+
+                const selectedStates = Array.from(document.querySelectorAll('.state-checkbox:checked')).map(cb => cb.value);
+                const selectedDistricts = Array.from(document.querySelectorAll('.district-checkbox:checked')).map(cb => cb.value);
+                const selectedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => JSON.parse(cb.value));
+
+                let filteredData = allData;
+
+                // Remove previous highlighted regions
+                highlightedRegions.forEach(region => map.removeLayer(region));
+                highlightedRegions = [];
+
+                // Apply state and district filters
+                if (selectedStates.length > 0) {
+                    filteredData = filteredData.filter(location => selectedStates.includes(location.state));
+                }
+
+                if (selectedDistricts.length > 0) {
+                    filteredData = filteredData.filter(location => selectedDistricts.includes(location.district));
+                }
+
+                // Apply custom region filters and highlight regions on map
+                if (selectedRegions.length > 0) {
+                    let regionFilteredData = [];
+
+                    selectedRegions.forEach(region => {
+                        if (region.radius) {
+                            const circle = L.circle(region.center, { radius: region.radius, color: 'red', fillColor: '#f03', fillOpacity: 0.5 }).addTo(map);
+                            highlightedRegions.push(circle);
+
+                            regionFilteredData = regionFilteredData.concat(allData.filter(location => {
+                                const distance = map.distance(region.center, [location.latitude, location.longitude]);
+                                return distance <= region.radius;
+                            }));
+                        } else if (region.coordinates) {
+                            const polygon = L.polygon(region.coordinates, { color: 'red', fillColor: '#f03', fillOpacity: 0.5 }).addTo(map);
+                            highlightedRegions.push(polygon);
+
+                            regionFilteredData = regionFilteredData.concat(allData.filter(location => {
+                                return polygon.getBounds().contains([location.latitude, location.longitude]);
+                            }));
+                        }
+                    });
+
+                    // Remove duplicates
+                    regionFilteredData = regionFilteredData.filter((value, index, self) =>
+                        index === self.findIndex((t) => (
+                            t.device_id === value.device_id
+                        ))
+                    );
+
+                    filteredData = filteredData.concat(regionFilteredData);
+                    filteredData = filteredData.filter((value, index, self) =>
+                        index === self.findIndex((t) => (
+                            t.device_id === value.device_id
+                        ))
+                    );//
+
+                }
+                // Remove any existing markers
+                Object.values(deviceMarkers).forEach(marker => {
+                    map.removeLayer(marker);
+                });
+
+                // Add markers for filtered data
+                deviceMarkers = {};
+                filteredData.forEach(location => {
+                    const { device_id, latitude, longitude, time, district, state } = location;
+                    const latlng = [latitude, longitude];
+                    const marker = L.marker(latlng).bindPopup(`<b>Device ${device_id}</b><br>Time: ${time}<br>District: ${district}<br>State: ${state}`).addTo(map);
+                    deviceMarkers[device_id] = marker;
+                });
+
+
+                const filteredDeviceIds = filteredData.map(location => location.device_id);
+                const previouslyFilteredDeviceIds = JSON.parse(localStorage.getItem('filteredDeviceIds')) || [];
+
+                // Devices that have entered
+                const devicesEntered = filteredDeviceIds.filter(id => !previouslyFilteredDeviceIds.includes(id));
+                devicesEntered.forEach(deviceId => {
+                    const message = `Device ${deviceId} entered the geofenced area.`;
+                    console.log(message);
+                });
+
+                // Devices that have left
+                const devicesLeft = previouslyFilteredDeviceIds.filter(id => !filteredDeviceIds.includes(id));
+                devicesLeft.forEach(deviceId => {
+                    const message = `Device ${deviceId} left the geofenced area.`;
+                    console.log(message);
+                });
+                // Update stored filtered device IDs
+                localStorage.setItem('filteredDeviceIds', JSON.stringify(filteredDeviceIds));
+                localStorage.setItem('filteredData', JSON.stringify(filteredData));
+                updateFilteredLocationsTable(filteredData);
+            }
+            function updateFilteredLocationsTable(data) {
+                const tbody = document.getElementById('filteredLocationsBody');
+                tbody.innerHTML = '';
+                //sort data according to device id
+                data.sort((a, b) => a.device_id - b.device_id);
+                data.forEach(location => {
+                    const row = tbody.insertRow();
+                    row.insertCell().textContent = location.device_id;
+                    row.insertCell().textContent = location.time;
+                    row.insertCell().textContent = location.latitude.toFixed(4);
+                    row.insertCell().textContent = location.longitude.toFixed(4);
+                    row.insertCell().textContent = location.district;
+                    row.insertCell().textContent = location.state;
+                    row.insertCell().textContent = location.status || 'Unknown'; // Add this line
+                });
+            }
+            document.getElementById('state-select').addEventListener('change', populateDistrictFilter);
+            document.getElementById('state-select').addEventListener('change', applyFilters);
+            document.getElementById('district-select').addEventListener('change', applyFilters);
+            document.getElementById('region-select').addEventListener('change', applyFilters);
+            fetchStatesAndDistricts();
+            fetchAllDevices();
+            loadCustomRegions();
+            setInterval(fetchAllDevices, 15000);
+        });
+
+        document.getElementById('export-csv').addEventListener('click', function() {
+            // Get selected states, districts, and regions
+            const selectedStates = Array.from(document.querySelectorAll('.state-checkbox:checked')).map(cb => cb.value);
+            const selectedDistricts = Array.from(document.querySelectorAll('.district-checkbox:checked')).map(cb => cb.value);
+            const selectedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => JSON.parse(cb.value));
+
+            var data = [];
+
+
+            // Get the table data
+            var table = document.querySelector('#logs-section table');
+
+            // Get headers
+            var headers = [];
+            for (var i = 0; i < table.rows[0].cells.length; i++) {
+                headers.push(table.rows[0].cells[i].innerText);
+            }
+            data.push(headers);
+
+            // Get rows
+            for (var i = 1; i < table.rows.length; i++) {
+                var row = [];
+                for (var j = 0; j < table.rows[i].cells.length; j++) {
+                    row.push(table.rows[i].cells[j].innerText);
+                }
+                data.push(row);
+            }
+            data.push([]);  // Empty row for separation
+            // Add filter information
+            data.push(['States', selectedStates.join(', ')]);
+            data.push(['Districts', selectedDistricts.join(', ')]);
+            data.push(['Custom Regions', selectedRegions.map(r => r.name).join(', ')]);
+            data.push([]);  // Empty row for separation
+
+            // Combine into CSV
+            var csv = data.map(row => row.join(',')).join('\n');
+
+            // Create download link
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement("a");
+            if (link.download !== undefined) {
+                var url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "geofencing_data.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+    </script>
+</body>
+</html>

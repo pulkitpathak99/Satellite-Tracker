@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Regions</title>
+    <link rel="stylesheet" href="css/CustomRegions.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+</head>
+<body>
+    <div class="wave"></div>
+    <header>
+        <div class="logo">
+            <img src="images/logo.png" alt="Logo">
+        </div>
+        <nav class="link-container">
+            <a href="home.html" class="link-button">Home</a>
+            <a href="currentLocation.html" class="link-button">Real-Time Locations</a>
+            <a href="HistoricalData.html" class="link-button">Historical Data</a>
+            <a href="mappedHistory.html" class="link-button">Mapped History</a>
+            <div class="dropdown1">
+                <button class="dropbtn1">Geofencing</button>
+                <div class="dropdown-content1">
+                    <a href="geofencing.html">Testing</a>
+                    <a href="geofencingPage(restricted).html">Restricted Access</a>
+                </div>
+            </div>
+            <a href="CustomRegions.html" class="link-button">Define Custom Region</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <h1>Define Custom Region</h1>
+        <div id="input-controls">
+            <select id="shape-select">
+                <option value="">Select...</option>
+                <option value="circle">Circle</option>
+                <option value="polygon">Polygon</option>
+                <option value="custom">Custom Drawing</option>
+            </select>
+            <div id="polygon-controls" class="controls" style="display: none;">
+                <div id="coordinate-inputs"></div>
+                <button onclick="addCoordinateInput()">Add another point</button>
+                <button onclick="createPolygon()">Create Polygon</button>
+                <button onclick="savePolygon()">Save Polygon</button>
+            </div>
+            <div id="circle-controls" class="controls" style="display: none;">
+                <input type="text" id="circle-lat" placeholder="Latitude">
+                <input type="text" id="circle-lng" placeholder="Longitude">
+                <input type="text" id="circle-radius" placeholder="Radius (km)">
+                <button onclick="createCircle()">Create Circle</button>
+                <button onclick="saveCircle()">Save Circle</button>
+            </div>
+            <div id="custom-controls" class="controls" style="display: none;">
+                <button id="start-drawing">Start Drawing</button>
+                <button id="stop-drawing" style="display: none;">Stop Drawing</button>
+                <button id="clear-drawing">Clear Drawing</button>
+                <button id="save-drawing">Save Drawing</button>
+            </div>
+        </div>
+        <div id="map"></div>
+        <div id="terminals-list" style="display: none;">
+            <h2>Terminals in Selected Area</h2>
+            <ul id="terminals"></ul>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="CustomRegions.js"></script>
+</body>
+</html>

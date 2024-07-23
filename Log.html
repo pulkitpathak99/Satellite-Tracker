@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Locations and Logs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #333;
+            color: #fff;
+        }
+        h1 {
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #444;
+            color: #fff;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        tr:nth-child(even) {
+            background-color: #555;
+        }
+        #back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        #back-btn:hover {
+            background-color: #0056b3;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Device Locations and Logs</h1>
+    <a id="back-btn" href="geofencingPage(restricted).html">Return to Device Map</a>
+
+    <div class="section">
+        <h2>Devices Currently Inside Geofenced Area</h2>
+        <table id="filteredLocationsTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0, 'filteredLocationsTable')">Device ID</th>
+                    <th onclick="sortTable(1, 'filteredLocationsTable')">Time</th>
+                    <th onclick="sortTable(2, 'filteredLocationsTable')">Latitude</th>
+                    <th onclick="sortTable(3, 'filteredLocationsTable')">Longitude</th>
+                    <th onclick="sortTable(4, 'filteredLocationsTable')">District</th>
+                    <th onclick="sortTable(5, 'filteredLocationsTable')">State</th>
+                </tr>
+            </thead>
+            <tbody id="filteredLocationsBody">
+                <!-- Filtered locations will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Device Logs</h2>
+        <div id="deviceLogs">
+            <!-- Device logs will be inserted here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filteredLocationsBody = document.getElementById('filteredLocationsBody');
+
+            function populateFilteredLocations(data) {
+                filteredLocationsBody.innerHTML = '';
+                data.sort((a, b) => (a.device_id > b.device_id) ? 1 : -1);
+                data.forEach(location => {
+                    const row = filteredLocationsBody.insertRow();
+                    row.insertCell().textContent = location.device_id;
+                    row.insertCell().textContent = location.time;
+                    row.insertCell().textContent = location.latitude.toFixed(4);
+                    row.insertCell().textContent = location.longitude.toFixed(4);
+                    row.insertCell().textContent = location.district;
+                    row.insertCell().textContent = location.state;
+                });
+            }
+
+            function updateLogs() {
+                var deviceLogs = JSON.parse(localStorage.getItem('deviceLogs'));
+                var deviceLogsDiv = document.getElementById('deviceLogs');
+                deviceLogsDiv.innerHTML = '';
+
+                if (deviceLogs && deviceLogs.length > 0) {
+                    var table = document.createElement('table');
+                    var thead = document.createElement('thead');
+                    var tbody = document.createElement('tbody');
+
+                    var headerRow = document.createElement('tr');
+                    ['Timestamp', 'Message'].forEach(header => {
+                        var th = document.createElement('th');
+                        th.textContent = header;
+                        th.onclick = () => sortTable(headerRow.cells.length - 1, 'deviceLogs');
+                        headerRow.appendChild(th);
+                    });
+
+                    thead.appendChild(headerRow);
+                    table.appendChild(thead);
+
+                    deviceLogs.forEach((log, index) => {
+                        var row = tbody.insertRow();
+                        row.insertCell().textContent = log.timestamp || 'N/A';
+                        row.insertCell().textContent = log.message || log;
+                    });
+
+                    table.appendChild(tbody);
+                    deviceLogsDiv.appendChild(table);
+                } else {
+                    deviceLogsDiv.textContent = 'No logs available';
+                }
+            }
+
+            function sortTable(columnIndex, tableId) {
+                const table = document.getElementById(tableId);
+                const tbody = table.getElementsByTagName('tbody')[0];
+                const rows = Array.from(tbody.rows);
+
+                rows.sort((rowA, rowB) => {
+                    const cellA = rowA.cells[columnIndex].textContent.trim();
+                    const cellB = rowB.cells[columnIndex].textContent.trim();
+
+                    if (columnIndex === 0 && tableId === 'filteredLocationsTable') {
+                        return Number(cellA) - Number(cellB);
+                    } else {
+                        return cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' });
+                    }
+                });
+
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+            }
+
+            // Initial population of tables
+            const filteredData = JSON.parse(localStorage.getItem('filteredData')) || [];
+            populateFilteredLocations(filteredData);
+            updateLogs();
+
+            // Auto-update every 15 seconds
+            setInterval(function() {
+                const updatedData = JSON.parse(localStorage.getItem('filteredData')) || [];
+                populateFilteredLocations(updatedData);
+                updateLogs();
+            }, 15000);
+        });
+    </script>
+</body>
+</html>
